@@ -4,14 +4,21 @@ import java.util.ArrayList;
 
 public class RouteResult {
 
-    private boolean routeFound;
-    private ArrayList<String> path;
-    private String message;
+    private final boolean routeFound;
+    private final ArrayList<String> path;
+    private final String message;
+    private final ArrayList<String> searchOrder;
 
-    public RouteResult(boolean routeFound, ArrayList<String> path, String message) {
+    public RouteResult(
+            boolean routeFound,
+            ArrayList<String> path,
+            String message,
+            ArrayList<String> searchOrder) {
+
         this.routeFound = routeFound;
         this.path = path;
         this.message = message;
+        this.searchOrder = searchOrder;
     }
 
     public boolean isRouteFound() {
@@ -26,6 +33,10 @@ public class RouteResult {
         return message;
     }
 
+    public ArrayList<String> getSearchOrder() {
+        return searchOrder;
+    }
+
     public int getFlightLegs() {
         if (!routeFound || path.size() < 2) {
             return 0;
@@ -35,13 +46,6 @@ public class RouteResult {
     }
 
     public int getTransfers() {
-        int flightLegs = getFlightLegs();
-
-        if (flightLegs == 0) {
-            return 0;
-        }
-
-        return flightLegs - 1;
+        return Math.max(0, getFlightLegs() - 1);
     }
-
 }
