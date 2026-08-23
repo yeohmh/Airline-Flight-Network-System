@@ -1,146 +1,87 @@
 package airlineflightnetwork;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-
 public class Main {
 
     public static void main(String[] args) {
 
-        HashMap<String, ArrayList<String>> adjacencyList
-                = createTestGraph();
+        AirlineNetwork network = new AirlineNetwork();
 
-        BFSRouteFinder bfs = new BFSRouteFinder();
+        System.out.println(
+                "========== ADD AIRPORT TEST ==========");
 
-        runTest(
-                "TEST 1 - Route requiring transfers",
-                bfs.findRoute(adjacencyList, "KUL", "NRT"));
-
-        runTest(
-                "TEST 2 - Direct flight",
-                bfs.findRoute(adjacencyList, "KUL", "PEN"));
-
-        runTest(
-                "TEST 3 - Same source and destination",
-                bfs.findRoute(adjacencyList, "KUL", "KUL"));
-
-        runTest(
-                "TEST 4 - Invalid source airport",
-                bfs.findRoute(adjacencyList, "XXX", "NRT"));
-
-        runTest(
-                "TEST 5 - Unavailable directed route",
-                bfs.findRoute(adjacencyList, "NRT", "KUL"));
-
-        runTest(
-                "TEST 6 - Lowercase and spaced input",
-                bfs.findRoute(adjacencyList, " kul ", " nrt "));
-    }
-
-    private static HashMap<String, ArrayList<String>>
-            createTestGraph() {
-
-        HashMap<String, ArrayList<String>> adjacencyList
-                = new HashMap<>();
-
-        adjacencyList.put(
+        network.addAirport(new Airport(
                 "KUL",
-                new ArrayList<>(
-                        Arrays.asList("PEN", "JHB", "BKK")));
+                "Kuala Lumpur International Airport",
+                "Kuala Lumpur",
+                "Malaysia"));
 
-        adjacencyList.put(
+        network.addAirport(new Airport(
                 "PEN",
-                new ArrayList<>(
-                        Arrays.asList("LGK", "BKK", "KCH")));
+                "Penang International Airport",
+                "Penang",
+                "Malaysia"));
 
-        adjacencyList.put(
-                "JHB",
-                new ArrayList<>(
-                        Arrays.asList("KCH", "BKI")));
-
-        adjacencyList.put(
-                "LGK",
-                new ArrayList<>(
-                        Arrays.asList("PEN")));
-
-        adjacencyList.put(
-                "KCH",
-                new ArrayList<>(
-                        Arrays.asList("BKI", "SIN")));
-
-        adjacencyList.put(
-                "BKI",
-                new ArrayList<>(
-                        Arrays.asList("MNL", "NRT")));
-
-        adjacencyList.put(
+        network.addAirport(new Airport(
                 "BKK",
-                new ArrayList<>(
-                        Arrays.asList("SIN", "HKG")));
+                "Suvarnabhumi Airport",
+                "Bangkok",
+                "Thailand"));
 
-        adjacencyList.put(
-                "SIN",
-                new ArrayList<>(
-                        Arrays.asList("HKG", "NRT")));
-
-        adjacencyList.put(
-                "MNL",
-                new ArrayList<>(
-                        Arrays.asList("NRT")));
-
-        adjacencyList.put(
-                "HKG",
-                new ArrayList<>(
-                        Arrays.asList("NRT")));
-
-        adjacencyList.put(
+        network.addAirport(new Airport(
                 "NRT",
-                new ArrayList<>());
+                "Narita International Airport",
+                "Tokyo",
+                "Japan"));
 
-        return adjacencyList;
-    }
-
-    private static void runTest(
-            String testTitle,
-            RouteResult result) {
-
-        System.out.println(
-                "\n========================================");
-        System.out.println(testTitle);
-        System.out.println(
-                "========================================");
-
-        displayResult(result);
-    }
-
-    private static void displayResult(RouteResult result) {
+        network.addAirport(new Airport(
+                "KUL",
+                "Duplicate Airport",
+                "Kuala Lumpur",
+                "Malaysia"));
 
         System.out.println(
-                "Status       : " + result.getMessage());
+                "\n========== ADD FLIGHT TEST ==========");
 
-        if (!result.getSearchOrder().isEmpty()) {
-            System.out.println(
-                    "Search Order : "
-                    + String.join(
-                            " -> ",
-                            result.getSearchOrder()));
-        }
+        network.addFlight(
+                "KUL", "PEN",
+                325, 120.00, 60);
 
-        if (result.isRouteFound()) {
-            System.out.println(
-                    "Route        : "
-                    + String.join(
-                            " -> ",
-                            result.getPath()));
+        network.addFlight(
+                "KUL", "BKK",
+                1215, 320.00, 130);
 
-            System.out.println(
-                    "Flight Legs  : "
-                    + result.getFlightLegs());
+        network.addFlight(
+                "PEN", "BKK",
+                945, 210.00, 105);
 
-            System.out.println(
-                    "Transfers    : "
-                    + result.getTransfers());
-        }
+        network.addFlight(
+                "BKK", "NRT",
+                4650, 780.00, 365);
+
+        network.addFlight(
+                "KUL", "PEN",
+                325, 150.00, 65);
+
+        network.addFlight(
+                "KUL", "XXX",
+                500, 100.00, 60);
+
+        network.addFlight(
+                "KUL", "NRT",
+                -1, 900.00, 420);
+
+        network.displayAirports();
+        network.displayFlights();
+
+        System.out.println(
+                "\n========== REMOVE TEST ==========");
+
+        network.removeFlight("PEN", "BKK");
+        network.removeFlight("PEN", "BKK");
+
+        network.removeAirport("BKK");
+        network.removeAirport("XXX");
+
+        network.displayFlights();
     }
 }
