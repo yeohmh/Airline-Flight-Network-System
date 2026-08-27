@@ -23,29 +23,20 @@ public class AirlineNetwork {
     }
 
     public boolean addAirport(Airport airport) {
-    if (airport == null) { 
-        message("Unable to add airport: invalid data."); 
-        return false; 
+        if (airport == null) { message("Unable to add airport: invalid data."); return false; }
+        String code = airport.getCode();
+
+        if (!code.matches("[A-Z]{3}")) {
+            message("Unable to add airport: airport code must contain exactly 3 letters.");
+            return false;
+        }
+
+        if (airports.containsKey(code)) { message("Unable to add airport: " + code + " already exists."); return false; }
+        airports.put(code, airport);
+        adjacencyList.put(code, new ArrayList<>());
+        message("Airport " + code + " added successfully.");
+        return true;
     }
-
-    String code = airport.getCode();
-
-    // Airport code must contain exactly 3 letters
-    if (!code.matches("[A-Z]{3}")) {
-        message("Unable to add airport: airport code must contain exactly 3 letters.");
-        return false;
-    }
-
-    if (airports.containsKey(code)) { 
-        message("Unable to add airport: " + code + " already exists."); 
-        return false; 
-    }
-
-    airports.put(code, airport);
-    adjacencyList.put(code, new ArrayList<>());
-    message("Airport " + code + " added successfully.");
-    return true;
-}
 
     public boolean removeAirport(String airportCode) {
         String code = normaliseCode(airportCode);
