@@ -23,7 +23,9 @@ Required operations
 
 Verification
 - JDK 20 compilation passed
-- 29 integration tests passed
+- 45 integration tests passed
+- Observed best/worst case analysis excludes same-airport route requests
+- Current 15-airport dataset evaluates 210 valid ordered airport pairs
 
 Before submission
 1. Open in NetBeans IDE 18.

@@ -17,18 +17,20 @@ public class DijkstraRouteFinder {
     public RouteResult findRoute(AirlineNetwork network, String source,
             String destination, RoutePreference preference) {
         ArrayList<String> empty = new ArrayList<>();
-        if (network == null || network.isEmpty()) return failure("The flight network is empty.", empty);
+        AlgorithmMetrics metrics = new AlgorithmMetrics("DIJKSTRA");
+        if (network == null || network.isEmpty()) return failure("The flight network is empty.", empty, metrics);
         source = network.normaliseCode(source);
         destination = network.normaliseCode(destination);
-        if (source.isEmpty() || destination.isEmpty()) return failure("Source and destination codes cannot be empty.", empty);
-        if (!network.airportExists(source)) return failure("Source airport " + source + " does not exist.", empty);
-        if (!network.airportExists(destination)) return failure("Destination airport " + destination + " does not exist.", empty);
-        if (preference == null) return failure("A route preference must be selected.", empty);
+        if (source.isEmpty() || destination.isEmpty()) return failure("Source and destination codes cannot be empty.", empty, metrics);
+        if (!network.airportExists(source)) return failure("Source airport " + source + " does not exist.", empty, metrics);
+        if (!network.airportExists(destination)) return failure("Destination airport " + destination + " does not exist.", empty, metrics);
+        if (preference == null) return failure("A route preference must be selected.", empty, metrics);
 
         ArrayList<String> searchOrder = new ArrayList<>();
         if (source.equals(destination)) {
             ArrayList<String> path = new ArrayList<>(); path.add(source); searchOrder.add(source);
-            return new RouteResult(true, path, "Source and destination are the same.", searchOrder, 0, 0, 0);
+            return new RouteResult(true, path, "Source and destination are the same.",
+                    searchOrder, 0, 0, 0, metrics);
         }
 
         HashMap<String, Double> cost = new HashMap<>();
@@ -39,12 +41,17 @@ public class DijkstraRouteFinder {
 
         PriorityQueue<Node> queue = new PriorityQueue<>();
         queue.offer(new Node(source, 0));
+        metrics.queueInserted();
+        metrics.observeQueueSize(queue.size());
         while (!queue.isEmpty()) {
             Node node = queue.poll();
+            metrics.queueRemoved();
             if (!processed.add(node.airportCode)) continue;
+            metrics.vertexProcessed();
             searchOrder.add(node.airportCode);
             if (node.airportCode.equals(destination)) break;
             for (FlightEdge edge : network.getOutgoingFlights(node.airportCode)) {
+                metrics.edgeExamined();
                 String neighbour = edge.getDestinationCode();
                 if (processed.contains(neighbour)) continue;
                 double newCost = cost.get(node.airportCode) + weight(edge, preference);
@@ -52,13 +59,16 @@ public class DijkstraRouteFinder {
                     cost.put(neighbour, newCost);
                     parent.put(neighbour, node.airportCode);
                     queue.offer(new Node(neighbour, newCost));
+                    metrics.relaxationSucceeded();
+                    metrics.queueInserted();
+                    metrics.observeQueueSize(queue.size());
                 }
             }
         }
-        if (!processed.contains(destination)) return failure("No route is available from " + source + " to " + destination + ".", searchOrder);
+        if (!processed.contains(destination)) return failure("No route is available from " + source + " to " + destination + ".", searchOrder, metrics);
         ArrayList<String> path = reconstruct(parent, destination);
         return BFSRouteFinder.success(network, path, searchOrder,
-                preference.getLabel() + " route found using Dijkstra's algorithm.");
+                preference.getLabel() + " route found using Dijkstra's algorithm.", metrics);
     }
 
     private double weight(FlightEdge edge, RoutePreference preference) {
@@ -70,8 +80,8 @@ public class DijkstraRouteFinder {
         }
     }
 
-    private RouteResult failure(String message, ArrayList<String> order) {
-        return new RouteResult(false, new ArrayList<>(), message, order, 0, 0, 0);
+    private RouteResult failure(String message, ArrayList<String> order, AlgorithmMetrics metrics) {
+        return new RouteResult(false, new ArrayList<>(), message, order, 0, 0, 0, metrics);
     }
 
     private ArrayList<String> reconstruct(HashMap<String, String> parent, String destination) {

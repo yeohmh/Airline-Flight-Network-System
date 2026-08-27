@@ -10,10 +10,18 @@ public class RouteResult {
     private final int totalDistanceKm;
     private final double totalFare;
     private final int totalDurationMinutes;
+    private final AlgorithmMetrics metrics;
 
     public RouteResult(boolean routeFound, ArrayList<String> path, String message,
             ArrayList<String> searchOrder, int totalDistanceKm,
             double totalFare, int totalDurationMinutes) {
+        this(routeFound, path, message, searchOrder, totalDistanceKm,
+                totalFare, totalDurationMinutes, new AlgorithmMetrics("N/A"));
+    }
+
+    public RouteResult(boolean routeFound, ArrayList<String> path, String message,
+            ArrayList<String> searchOrder, int totalDistanceKm,
+            double totalFare, int totalDurationMinutes, AlgorithmMetrics metrics) {
         this.routeFound = routeFound;
         this.path = new ArrayList<>(path);
         this.message = message;
@@ -21,6 +29,8 @@ public class RouteResult {
         this.totalDistanceKm = totalDistanceKm;
         this.totalFare = totalFare;
         this.totalDurationMinutes = totalDurationMinutes;
+        this.metrics = metrics == null
+                ? new AlgorithmMetrics("N/A") : new AlgorithmMetrics(metrics);
     }
 
     public boolean isRouteFound() { return routeFound; }
@@ -30,6 +40,7 @@ public class RouteResult {
     public int getTotalDistanceKm() { return totalDistanceKm; }
     public double getTotalFare() { return totalFare; }
     public int getTotalDurationMinutes() { return totalDurationMinutes; }
+    public AlgorithmMetrics getMetrics() { return new AlgorithmMetrics(metrics); }
     public int getFlightLegs() { return routeFound ? Math.max(0, path.size() - 1) : 0; }
     public int getTransfers() { return Math.max(0, getFlightLegs() - 1); }
 

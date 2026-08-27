@@ -17,7 +17,11 @@ This project includes:
 - Add/remove airport and directed-flight operations
 - 15-airport, 70-flight initial dataset
 - Console algorithm analysis with best/worst time and space complexity
-- Console Main and IntegrationTest retained for verification
+- Deterministic observed best/worst cases across all valid airport pairs
+- BFS and Dijkstra operation counters for presentation evidence
+- Structured main menu and submenus with validation, pause and clear-screen flow
+- Enter E at any operation prompt to cancel safely without changing graph data
+- Console Main and expanded IntegrationTest retained for verification
 
 Open this folder as a project in NetBeans. The JavaFX library paths, native
 Windows files, main class and VM arguments are already configured.

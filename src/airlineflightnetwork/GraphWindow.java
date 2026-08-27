@@ -17,15 +17,15 @@ import javafx.scene.control.Tooltip;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
-import javafx.scene.shape.Line;
 import javafx.scene.shape.Polygon;
+import javafx.scene.shape.QuadCurve;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
-import javafx.scene.layout.VBox;
 
 /**
  * JavaFX is used only for graph and traversal-result visualisation.
@@ -67,7 +67,7 @@ public final class GraphWindow {
         details.setEditable(false);
         details.setWrapText(true);
         details.setFont(Font.font("Consolas", 12));
-        details.setPrefWidth(330);
+        details.setPrefWidth(310);
 
         Button zoomIn = new Button("Zoom In +");
         Button zoomOut = new Button("Zoom Out -");
@@ -75,13 +75,16 @@ public final class GraphWindow {
         zoomIn.setOnAction(e -> graph.changeZoom(1.15));
         zoomOut.setOnAction(e -> graph.changeZoom(1 / 1.15));
         reset.setOnAction(e -> graph.resetView());
+
         Label modeTitle = new Label(title);
         modeTitle.setFont(Font.font("Arial", FontWeight.BOLD, 20));
         modeTitle.setTextFill(Color.web("#12355b"));
 
-        HBox tools = new HBox(10, zoomIn, zoomOut, reset,
-                new Label("Mouse wheel: zoom | Drag blank area: pan | Hover over an edge: view weights"));
+        Label help = new Label(
+                "Mouse wheel: zoom | Drag blank area: pan | Hover over a flight: view weights");
+        help.setTextFill(Color.web("#475569"));
 
+        HBox tools = new HBox(10, zoomIn, zoomOut, reset, help);
         VBox topSection = new VBox(8, modeTitle, tools);
         topSection.setPadding(new Insets(12));
 
@@ -90,9 +93,10 @@ public final class GraphWindow {
         root.setCenter(graph);
         root.setRight(details);
         BorderPane.setMargin(details, new Insets(0, 10, 10, 10));
+
         Stage stage = new Stage();
         stage.setTitle(title == null ? "Airline Flight Network Graph" : title);
-        stage.setScene(new Scene(root, 1240, 720));
+        stage.setScene(new Scene(root, 1280, 760));
         stage.setOnHidden(e -> closed.countDown());
         stage.show();
     }
@@ -111,7 +115,9 @@ public final class GraphWindow {
                 .append("Yellow : explored airport\n")
                 .append("Red    : primary route\n")
                 .append("Green  : secondary route\n")
-                .append("Purple : edge shared by both routes\n");
+                .append("Purple : shared by both routes\n")
+                .append("\nHighlighted edge box:\n")
+                .append("Distance | Fare | Duration\n");
         return out.toString();
     }
 
@@ -150,10 +156,12 @@ public final class GraphWindow {
             this.primary = primary;
             this.secondary = secondary;
             setStyle("-fx-background-color: white; -fx-border-color: #cbd5e1;");
-            setPrefSize(880, 660);
+            setPrefSize(950, 680);
             initialisePoints();
+
             widthProperty().addListener((o, a, b) -> draw());
             heightProperty().addListener((o, a, b) -> draw());
+
             setOnScroll(e -> {
                 changeZoom(e.getDeltaY() > 0 ? 1.12 : 1 / 1.12);
                 e.consume();
@@ -192,46 +200,70 @@ public final class GraphWindow {
         }
 
         private void initialisePoints() {
-            points.put("LGK", new Point2D(75, 85));
-            points.put("PEN", new Point2D(145, 160));
-            points.put("KBR", new Point2D(285, 105));
-            points.put("KUL", new Point2D(230, 275));
-            points.put("JHB", new Point2D(285, 390));
-            points.put("KCH", new Point2D(425, 310));
-            points.put("BKI", new Point2D(555, 260));
-            points.put("SIN", new Point2D(350, 465));
-            points.put("BKK", new Point2D(405, 120));
-            points.put("CGK", new Point2D(470, 535));
-            points.put("MNL", new Point2D(635, 340));
-            points.put("HKG", new Point2D(600, 155));
-            points.put("TPE", new Point2D(700, 100));
-            points.put("NRT", new Point2D(825, 125));
-            points.put("ICN", new Point2D(765, 50));
+            // Fixed layout keeps nearby airports readable and reduces line crossings.
+            points.put("LGK", new Point2D(70, 80));
+            points.put("PEN", new Point2D(150, 185));
+            points.put("KBR", new Point2D(300, 105));
+            points.put("KUL", new Point2D(260, 315));
+            points.put("JHB", new Point2D(320, 445));
+            points.put("KCH", new Point2D(465, 355));
+            points.put("SIN", new Point2D(425, 550));
+            points.put("CGK", new Point2D(535, 625));
+            points.put("BKK", new Point2D(455, 125));
+            points.put("BKI", new Point2D(620, 300));
+            points.put("HKG", new Point2D(705, 185));
+            points.put("MNL", new Point2D(740, 420));
+            points.put("TPE", new Point2D(805, 105));
+            points.put("ICN", new Point2D(865, 50));
+            points.put("NRT", new Point2D(910, 175));
         }
 
         private void draw() {
             getChildren().clear();
+
+            // Draw ordinary flights first so highlighted routes always stay visible on top.
+            drawEdges(false);
+            drawEdges(true);
+
+            for (Airport airport : network.getAirports()) {
+                drawAirport(airport);
+            }
+        }
+
+        private void drawEdges(boolean highlightedOnly) {
             for (Airport airport : network.getAirports()) {
                 Point2D from = points.get(airport.getCode());
                 if (from == null) {
                     continue;
                 }
+
                 for (FlightEdge edge : network.getOutgoingFlights(airport.getCode())) {
                     Point2D to = points.get(edge.getDestinationCode());
                     if (to == null) {
                         continue;
                     }
+
                     boolean first = containsEdge(primary, edge);
                     boolean second = containsEdge(secondary, edge);
+                    boolean highlighted = first || second;
+                    if (highlighted != highlightedOnly) {
+                        continue;
+                    }
+
                     Color color = first && second ? Color.web("#7c3aed")
-                            : second ? Color.web("#16803c") : first ? Color.web("#d92d20")
-                                    : Color.web("#cbd5e1");
-                    drawArrow(from, to, edge, color, first || second ? 3.5 : 1.0);
+                            : second ? Color.web("#16803c")
+                                    : first ? Color.web("#d92d20")
+                                            : Color.web("#9fb1c5");
+
+                    double width = highlighted ? 3.2 : 1.05;
+                    double opacity = highlighted ? 1.0 : hasRouteResult() ? 0.30 : 0.62;
+                    drawArrow(from, to, edge, color, width, opacity, highlighted);
                 }
             }
-            for (Airport airport : network.getAirports()) {
-                drawAirport(airport);
-            }
+        }
+
+        private boolean hasRouteResult() {
+            return primary != null || secondary != null;
         }
 
         private boolean containsEdge(RouteResult result, FlightEdge edge) {
@@ -248,6 +280,10 @@ public final class GraphWindow {
             return false;
         }
 
+        private boolean containsAirport(RouteResult result, String code) {
+            return result != null && result.isRouteFound() && result.getPath().contains(code);
+        }
+
         private boolean explored(String code) {
             return primary != null && primary.getSearchOrder().contains(code)
                     || secondary != null && secondary.getSearchOrder().contains(code);
@@ -258,67 +294,143 @@ public final class GraphWindow {
             if (p == null) {
                 return;
             }
-            Color fill = explored(airport.getCode()) ? Color.web("#d99a00") : Color.web("#1769aa");
-            Circle circle = new Circle(p.getX(), p.getY(), 15, fill);
+
+            boolean first = containsAirport(primary, airport.getCode());
+            boolean second = containsAirport(secondary, airport.getCode());
+            Color fill = first && second ? Color.web("#7c3aed")
+                    : second ? Color.web("#16803c")
+                            : first ? Color.web("#d92d20")
+                                    : explored(airport.getCode()) ? Color.web("#d99a00")
+                                            : Color.web("#1769aa");
+
+            Circle circle = new Circle(p.getX(), p.getY(), 17, fill);
             circle.setStroke(Color.WHITE);
-            circle.setStrokeWidth(2);
-            Text code = new Text(p.getX() - 13, p.getY() + 4, airport.getCode());
+            circle.setStrokeWidth(2.2);
+
+            Text code = new Text(airport.getCode());
             code.setFill(Color.WHITE);
-            code.setFont(Font.font("Arial", FontWeight.BOLD, 9));
-            Text city = new Text(p.getX() - 25, p.getY() + 31, airport.getCity());
+            code.setFont(Font.font("Arial", FontWeight.BOLD, 10));
+            code.setX(p.getX() - code.getLayoutBounds().getWidth() / 2);
+            code.setY(p.getY() + 4);
+
+            Text city = new Text(airport.getCity());
             city.setFont(Font.font("Arial", 10));
             city.setFill(Color.web("#334155"));
+            city.setX(p.getX() - city.getLayoutBounds().getWidth() / 2);
+            city.setY(p.getY() + 34);
+
             Group node = new Group(circle, code, city);
             Tooltip.install(node, new Tooltip(airport.toString() + "\nOutgoing flights: "
                     + network.getOutgoingFlights(airport.getCode()).size()));
             getChildren().add(node);
         }
 
-        private void drawArrow(Point2D from, Point2D to, FlightEdge edge, Color color, double width) {
+        private void drawArrow(Point2D from, Point2D to, FlightEdge edge,
+                Color color, double width, double opacity, boolean highlighted) {
             double dx = to.getX() - from.getX();
             double dy = to.getY() - from.getY();
             double length = Math.hypot(dx, dy);
             if (length == 0) {
                 return;
             }
-            double ux = dx / length, uy = dy / length;
-            double x1 = from.getX() + ux * 17, y1 = from.getY() + uy * 17;
-            double x2 = to.getX() - ux * 19, y2 = to.getY() - uy * 19;
-            Line line = new Line(x1, y1, x2, y2);
-            line.setStroke(color);
-            line.setStrokeWidth(width);
-            double px = -uy, py = ux;
-            Polygon arrow = new Polygon(x2, y2,
-                    x2 - ux * 10 + px * 4, y2 - uy * 10 + py * 4,
-                    x2 - ux * 10 - px * 4, y2 - uy * 10 - py * 4);
+
+            double ux = dx / length;
+            double uy = dy / length;
+            double px = -uy;
+            double py = ux;
+
+            double x1 = from.getX() + ux * 20;
+            double y1 = from.getY() + uy * 20;
+            double x2 = to.getX() - ux * 21;
+            double y2 = to.getY() - uy * 21;
+
+            boolean reverseExists = network.flightExists(
+                    edge.getDestinationCode(), edge.getSourceCode());
+
+            double bend = 0;
+            if (reverseExists) {
+                // Separate opposite-direction flights so their arrows are both visible.
+                bend = edge.getSourceCode().compareTo(edge.getDestinationCode()) < 0 ? 14 : -14;
+            }
+
+            // Small extra bend keeps LGK -> KUL from visually passing through PEN.
+            if (edge.getSourceCode().equals("LGK") && edge.getDestinationCode().equals("KUL")) {
+                bend = -20;
+            }
+
+            double controlX = (x1 + x2) / 2 + px * bend;
+            double controlY = (y1 + y2) / 2 + py * bend;
+
+            QuadCurve curve = new QuadCurve(x1, y1, controlX, controlY, x2, y2);
+            curve.setFill(Color.TRANSPARENT);
+            curve.setStroke(color);
+            curve.setStrokeWidth(width);
+            curve.setOpacity(opacity);
+
+            // Arrow direction follows the curve tangent at the destination.
+            double tangentX = x2 - controlX;
+            double tangentY = y2 - controlY;
+            double tangentLength = Math.hypot(tangentX, tangentY);
+            double tx = tangentX / tangentLength;
+            double ty = tangentY / tangentLength;
+            double arrowPx = -ty;
+            double arrowPy = tx;
+
+            double arrowLength = highlighted ? 12 : 10;
+            double arrowHalfWidth = highlighted ? 5 : 4;
+            Polygon arrow = new Polygon(
+                    x2, y2,
+                    x2 - tx * arrowLength + arrowPx * arrowHalfWidth,
+                    y2 - ty * arrowLength + arrowPy * arrowHalfWidth,
+                    x2 - tx * arrowLength - arrowPx * arrowHalfWidth,
+                    y2 - ty * arrowLength - arrowPy * arrowHalfWidth);
             arrow.setFill(color);
+            arrow.setOpacity(opacity);
+
             String tooltip = edge.getSourceCode() + " -> " + edge.getDestinationCode()
                     + "\nDistance: " + edge.getDistanceKm() + " km"
                     + String.format("%nFare: RM %.2f", edge.getFare())
                     + "\nDuration: " + edge.getDurationMinutes() + " minutes";
-            Tooltip.install(line, new Tooltip(tooltip));
+            Tooltip.install(curve, new Tooltip(tooltip));
             Tooltip.install(arrow, new Tooltip(tooltip));
-            getChildren().addAll(line, arrow);
-            if (width > 1.0) {
-                Label weightLabel = new Label(
-                        edge.getSourceCode() + " → " + edge.getDestinationCode()
-                        + "\n" + edge.getDistanceKm() + " km"
-                        + String.format(" | RM %.2f", edge.getFare())
-                        + " | " + edge.getDurationMinutes() + " min");
+            getChildren().addAll(curve, arrow);
 
-                weightLabel.setLayoutX((x1 + x2) / 2);
-                weightLabel.setLayoutY((y1 + y2) / 2);
-                weightLabel.setStyle(
-                        "-fx-background-color: rgba(255,255,255,0.92);"
-                        + "-fx-border-color: " + toHex(color) + ";"
-                        + "-fx-border-radius: 4;"
-                        + "-fx-background-radius: 4;"
-                        + "-fx-padding: 3 5;"
-                        + "-fx-font-size: 10px;"
-                        + "-fx-font-weight: bold;");
-
-                getChildren().add(weightLabel);
+            if (highlighted) {
+                drawWeightLabel(edge, color, x1, y1, controlX, controlY, x2, y2, px, py, bend);
             }
+        }
+
+        private void drawWeightLabel(FlightEdge edge, Color color,
+                double x1, double y1, double controlX, double controlY,
+                double x2, double y2, double px, double py, double bend) {
+
+            // Midpoint of a quadratic curve at t = 0.5.
+            double midX = 0.25 * x1 + 0.5 * controlX + 0.25 * x2;
+            double midY = 0.25 * y1 + 0.5 * controlY + 0.25 * y2;
+
+            double labelOffset = bend == 0 ? 16 : Math.signum(bend) * 18;
+            midX += px * labelOffset;
+            midY += py * labelOffset;
+
+            Label weightLabel = new Label(
+                    edge.getSourceCode() + " → " + edge.getDestinationCode()
+                    + "\n" + edge.getDistanceKm() + " km"
+                    + String.format(" | RM %.2f", edge.getFare())
+                    + " | " + edge.getDurationMinutes() + " min");
+
+            weightLabel.setLayoutX(midX - 65);
+            weightLabel.setLayoutY(midY - 18);
+            weightLabel.setStyle(
+                    "-fx-background-color: rgba(255,255,255,0.96);"
+                    + "-fx-border-color: " + toHex(color) + ";"
+                    + "-fx-border-width: 1.2;"
+                    + "-fx-border-radius: 5;"
+                    + "-fx-background-radius: 5;"
+                    + "-fx-padding: 4 6;"
+                    + "-fx-font-size: 10px;"
+                    + "-fx-font-weight: bold;");
+
+            getChildren().add(weightLabel);
         }
 
         private String toHex(Color color) {

@@ -19,6 +19,9 @@ public class IntegrationTest {
         check(bfs.findRoute(network, "KUL", "KUL").getFlightLegs() == 0, "BFS handles same airport");
         check(bfsResult.getSearchOrder().get(0).equals("KUL"), "BFS records traversal order");
         check(bfsResult.getTransfers() == 0, "BFS calculates transfers");
+        check(bfsResult.getMetrics().getVerticesProcessed() > 0, "BFS records processed vertices");
+        check(bfsResult.getMetrics().getEdgesExamined() > 0, "BFS records examined edges");
+        check(bfsResult.getMetrics().getMaximumQueueSize() > 0, "BFS records maximum queue size");
 
         DijkstraRouteFinder dijkstra = new DijkstraRouteFinder();
         RouteResult cheapest = dijkstra.findRoute(network, "KUL", "NRT", RoutePreference.FARE);
@@ -26,10 +29,44 @@ public class IntegrationTest {
         check(cheapest.getTotalFare() < bfsResult.getTotalFare(), "Dijkstra finds a cheaper multi-leg route");
         RouteResult shortest = dijkstra.findRoute(network, "KUL", "NRT", RoutePreference.DISTANCE);
         check(shortest.isRouteFound(), "Dijkstra shortest-distance mode");
+        check(shortest.getPath().equals(new java.util.ArrayList<>(
+                java.util.Arrays.asList("KUL", "NRT"))), "Dijkstra reconstructs shortest-distance route");
+        check(shortest.getTotalDistanceKm() == 5400, "Dijkstra shortest-distance total");
         RouteResult fastest = dijkstra.findRoute(network, "KUL", "NRT", RoutePreference.DURATION);
         check(fastest.isRouteFound(), "Dijkstra fastest-duration mode");
+        check(fastest.getPath().equals(new java.util.ArrayList<>(
+                java.util.Arrays.asList("KUL", "NRT"))), "Dijkstra reconstructs fastest route");
+        check(fastest.getTotalDurationMinutes() == 420, "Dijkstra fastest-duration total");
         check(cheapest.getPath().equals(new java.util.ArrayList<>(
                 java.util.Arrays.asList("KUL", "BKK", "NRT"))), "Dijkstra reconstructs cheapest route");
+        check(cheapest.getMetrics().getSuccessfulRelaxations() > 0,
+                "Dijkstra records successful relaxations");
+        check(cheapest.getMetrics().getMaximumQueueSize() > 0,
+                "Dijkstra records maximum priority-queue size");
+
+        AlgorithmCaseAnalyzer analyzer = new AlgorithmCaseAnalyzer();
+        AlgorithmCaseAnalyzer.AnalysisCase bfsBest = analyzer.findBfsBest(network);
+        AlgorithmCaseAnalyzer.AnalysisCase bfsWorst = analyzer.findBfsWorst(network);
+        check(bfsBest.getPairsTested() == 210, "BFS analysis checks all 210 valid ordered pairs");
+        check(!bfsBest.getSource().equals(bfsBest.getDestination()),
+                "BFS observed best excludes same-airport input");
+        check(bfsBest.getResult().getMetrics().getObservedWorkUnits()
+                <= bfsWorst.getResult().getMetrics().getObservedWorkUnits(),
+                "BFS observed best work does not exceed observed worst work");
+
+        AlgorithmCaseAnalyzer.AnalysisCase fareBest
+                = analyzer.findDijkstraBest(network, RoutePreference.FARE);
+        AlgorithmCaseAnalyzer.AnalysisCase fareWorst
+                = analyzer.findDijkstraWorst(network, RoutePreference.FARE);
+        check(fareBest.getPairsTested() == 210,
+                "Dijkstra analysis checks all 210 valid ordered pairs");
+        check(!fareBest.getSource().equals(fareBest.getDestination()),
+                "Dijkstra observed best excludes same-airport input");
+        check(fareBest.getResult().getMetrics().getObservedWorkUnits()
+                <= fareWorst.getResult().getMetrics().getObservedWorkUnits(),
+                "Dijkstra observed best work does not exceed observed worst work");
+        check(network.getAirportCount() == 15 && network.getFlightCount() == 70,
+                "case analysis does not modify the airline graph");
 
         check(network.addAirport(new Airport("TST", "Test Airport", "Test City", "Malaysia")), "add airport");
         check(!network.addAirport(new Airport("TST", "Duplicate", "Test City", "Malaysia")), "reject duplicate airport");
