@@ -11,6 +11,11 @@ public class Main {
     private static final AlgorithmCaseAnalyzer ANALYZER = new AlgorithmCaseAnalyzer();
 
     public static void main(String[] args) {
+        AirlineSystemGUI.main(args);
+    }
+
+    /** Retained console interface for testing and fallback use. */
+    public static void runConsole() {
         boolean running = true;
         while (running) {
             clearScreen();
@@ -343,7 +348,7 @@ public class Main {
 
     private static void displaySummary() {
         heading("NETWORK SUMMARY");
-        field("Graph Type", "Directed Weighted Graph"); field("Representation", "Adjacency Edge List");
+        field("Graph Type", "Directed Weighted Graph"); field("Representation", "Adjacency List");
         field("Airport Vertices", NETWORK.getAirportCount()); field("Directed Edges", NETWORK.getFlightCount());
         field("Edge Weights", "Distance, fare and duration");
         field("Traversal", "Breadth-First Search (BFS)"); field("Weighted Algorithm", "Dijkstra's Algorithm");
@@ -438,7 +443,7 @@ public class Main {
         System.out.println("============================================================");
         System.out.println("              AIRLINE FLIGHT NETWORK SYSTEM");
         System.out.println("============================================================");
-        field("Graph Model", "Directed Weighted Graph"); field("Representation", "Adjacency Edge List");
+        field("Graph Model", "Directed Weighted Graph"); field("Representation", "Adjacency List");
         field("Current Network", NETWORK.getAirportCount() + " Airports | " + NETWORK.getFlightCount() + " Directed Flights");
         System.out.println("============================================================\n");
     }
