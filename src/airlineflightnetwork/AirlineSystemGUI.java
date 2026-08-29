@@ -56,7 +56,7 @@ public class AirlineSystemGUI extends Application {
     private final AlgorithmCaseAnalyzer analyzer = new AlgorithmCaseAnalyzer();
 
     private final ObservableList<Airport> airports = FXCollections.observableArrayList();
-    private final ObservableList<FlightEdge> flights = FXCollections.observableArrayList();
+    private final ObservableList<Edge> flights = FXCollections.observableArrayList();
     private final ComboBox<Airport> departureBox = airportCombo();
     private final ComboBox<Airport> destinationBox = airportCombo();
     private final ComboBox<String> routeMode = new ComboBox<>();
@@ -64,7 +64,7 @@ public class AirlineSystemGUI extends Application {
     private InteractiveGraphView graphView;
     private Label networkCount;
     private TableView<Airport> airportTable;
-    private TableView<FlightEdge> flightTable;
+    private TableView<Edge> flightTable;
     private ComboBox<Airport> flightSourceBox;
     private ComboBox<Airport> flightDestinationBox;
 
@@ -78,7 +78,7 @@ public class AirlineSystemGUI extends Application {
             @Override public void setDestination(Airport airport) {
                 destinationBox.setValue(airport); updateEndpointHighlights();
             }
-            @Override public void showFlight(FlightEdge edge) { showFlightDetails(edge); }
+            @Override public void showFlight(Edge edge) { showFlightDetails(edge); }
         });
 
         BorderPane root = new BorderPane();
@@ -304,7 +304,7 @@ public class AirlineSystemGUI extends Application {
             catch (IllegalArgumentException ex) { error(ex.getMessage()); }
         });
         remove.setOnAction(e -> {
-            FlightEdge selected = flightTable.getSelectionModel().getSelectedItem();
+            Edge selected = flightTable.getSelectionModel().getSelectedItem();
             if (selected == null) { error("Select a directed flight from the table first."); return; }
             if (confirm("Remove Flight", "Remove " + selected.getSourceCode()
                     + " → " + selected.getDestinationCode() + "?")) {
@@ -398,7 +398,7 @@ public class AirlineSystemGUI extends Application {
                 + "Right-click this vertex to set it as a route endpoint.");
     }
 
-    private void showFlightDetails(FlightEdge edge) {
+    private void showFlightDetails(Edge edge) {
         routeDetails.setText("DIRECTED FLIGHT EDGE\n\n"
                 + "Source      : " + edge.getSourceCode() + "\n"
                 + "Destination : " + edge.getDestinationCode() + "\n"
@@ -471,7 +471,7 @@ public class AirlineSystemGUI extends Application {
 
     private void refreshData() {
         airports.setAll(network.getAirports());
-        ArrayList<FlightEdge> all = new ArrayList<>();
+        ArrayList<Edge> all = new ArrayList<>();
         for (Airport airport : network.getAirports()) all.addAll(network.getOutgoingFlights(airport.getCode()));
         flights.setAll(all);
         setComboItems(departureBox, airports);
@@ -500,17 +500,17 @@ public class AirlineSystemGUI extends Application {
         return table;
     }
 
-    private TableView<FlightEdge> createFlightTable() {
-        TableView<FlightEdge> table = new TableView<>(flights);
-        TableColumn<FlightEdge, String> source = new TableColumn<>("From");
+    private TableView<Edge> createFlightTable() {
+        TableView<Edge> table = new TableView<>(flights);
+        TableColumn<Edge, String> source = new TableColumn<>("From");
         source.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getSourceCode()));
-        TableColumn<FlightEdge, String> destination = new TableColumn<>("To");
+        TableColumn<Edge, String> destination = new TableColumn<>("To");
         destination.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getDestinationCode()));
-        TableColumn<FlightEdge, Number> distance = new TableColumn<>("Distance");
+        TableColumn<Edge, Number> distance = new TableColumn<>("Distance");
         distance.setCellValueFactory(c -> new SimpleIntegerProperty(c.getValue().getDistanceKm()));
-        TableColumn<FlightEdge, Number> fare = new TableColumn<>("Fare");
+        TableColumn<Edge, Number> fare = new TableColumn<>("Fare");
         fare.setCellValueFactory(c -> new SimpleDoubleProperty(c.getValue().getFare()));
-        TableColumn<FlightEdge, Number> duration = new TableColumn<>("Minutes");
+        TableColumn<Edge, Number> duration = new TableColumn<>("Minutes");
         duration.setCellValueFactory(c -> new SimpleIntegerProperty(c.getValue().getDurationMinutes()));
         table.getColumns().addAll(source, destination, distance, fare, duration);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);

@@ -31,7 +31,7 @@ public class InteractiveGraphView extends Pane {
         void showAirport(Airport airport);
         void setDeparture(Airport airport);
         void setDestination(Airport airport);
-        void showFlight(FlightEdge edge);
+        void showFlight(Edge edge);
     }
 
     private final AirlineNetwork network;
@@ -42,7 +42,7 @@ public class InteractiveGraphView extends Pane {
     private RouteResult secondary;
     private String departureCode;
     private String destinationCode;
-    private FlightEdge selectedEdge;
+    private Edge selectedEdge;
     private double zoom = 1;
     private double panX;
     private double panY;
@@ -199,7 +199,7 @@ public class InteractiveGraphView extends Pane {
         for (Airport airport : network.getAirports()) {
             Point2D from = points.get(airport.getCode());
             if (from == null) continue;
-            for (FlightEdge edge : network.getOutgoingFlights(airport.getCode())) {
+            for (Edge edge : network.getOutgoingFlights(airport.getCode())) {
                 Point2D to = points.get(edge.getDestinationCode());
                 if (to == null) continue;
                 boolean first = containsEdge(primary, edge);
@@ -276,7 +276,7 @@ public class InteractiveGraphView extends Pane {
         canvas.getChildren().add(node);
     }
 
-    private void drawArrow(Point2D from, Point2D to, FlightEdge edge,
+    private void drawArrow(Point2D from, Point2D to, Edge edge,
             Color color, double width, double opacity, boolean emphasized) {
         double dx = to.getX() - from.getX();
         double dy = to.getY() - from.getY();
@@ -324,13 +324,13 @@ public class InteractiveGraphView extends Pane {
         if (emphasized) drawWeightLabel(edge, color, x1, y1, cx, cy, x2, y2, px, py, bend);
     }
 
-    private void selectEdge(FlightEdge edge) {
+    private void selectEdge(Edge edge) {
         selectedEdge = edge;
         if (listener != null) listener.showFlight(edge);
         draw();
     }
 
-    private void drawWeightLabel(FlightEdge edge, Color color,
+    private void drawWeightLabel(Edge edge, Color color,
             double x1, double y1, double cx, double cy,
             double x2, double y2, double px, double py, double bend) {
         double midX = .25 * x1 + .5 * cx + .25 * x2;
@@ -354,7 +354,7 @@ public class InteractiveGraphView extends Pane {
 
     private boolean hasRouteResult() { return primary != null || secondary != null; }
 
-    private boolean containsEdge(RouteResult result, FlightEdge edge) {
+    private boolean containsEdge(RouteResult result, Edge edge) {
         if (result == null || !result.isRouteFound()) return false;
         ArrayList<String> path = result.getPath();
         for (int i = 0; i < path.size() - 1; i++) {
@@ -373,7 +373,7 @@ public class InteractiveGraphView extends Pane {
                 || secondary != null && secondary.getSearchOrder().contains(code);
     }
 
-    private boolean sameEdge(FlightEdge a, FlightEdge b) {
+    private boolean sameEdge(Edge a, Edge b) {
         return a != null && b != null
                 && a.getSourceCode().equals(b.getSourceCode())
                 && a.getDestinationCode().equals(b.getDestinationCode());

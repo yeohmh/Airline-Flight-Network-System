@@ -40,7 +40,7 @@ public class BFSRouteFinder {
             metrics.vertexProcessed();
             searchOrder.add(current);
             if (current.equals(destination)) { found = true; break; }
-            for (FlightEdge edge : network.getOutgoingFlights(current)) {
+            for (Edge edge : network.getOutgoingFlights(current)) {
                 metrics.edgeExamined();
                 String neighbour = edge.getDestinationCode();
                 if (visited.add(neighbour)) {
@@ -66,7 +66,7 @@ public class BFSRouteFinder {
         int distance = 0, duration = 0;
         double fare = 0;
         for (int i = 0; i < path.size() - 1; i++) {
-            FlightEdge edge = network.getFlight(path.get(i), path.get(i + 1));
+            Edge edge = network.getFlight(path.get(i), path.get(i + 1));
             if (edge != null) {
                 distance += edge.getDistanceKm();
                 fare += edge.getFare();

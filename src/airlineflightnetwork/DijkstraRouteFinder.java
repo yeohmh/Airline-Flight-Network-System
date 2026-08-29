@@ -14,64 +14,85 @@ public class DijkstraRouteFinder {
         @Override public int compareTo(Node other) { return Double.compare(cost, other.cost); }
     }
 
-    public RouteResult findRoute(AirlineNetwork network, String source,
-            String destination, RoutePreference preference) {
+    // ========== 4.5 Dijkstra's Algorithm (matches proposal naming) ==========
+    public RouteResult dijkstra(String fromAirport, String toAirport,
+            RoutePreference preference, AirlineNetwork adjList) {
         ArrayList<String> empty = new ArrayList<>();
         AlgorithmMetrics metrics = new AlgorithmMetrics("DIJKSTRA");
-        if (network == null || network.isEmpty()) return failure("The flight network is empty.", empty, metrics);
-        source = network.normaliseCode(source);
-        destination = network.normaliseCode(destination);
-        if (source.isEmpty() || destination.isEmpty()) return failure("Source and destination codes cannot be empty.", empty, metrics);
-        if (!network.airportExists(source)) return failure("Source airport " + source + " does not exist.", empty, metrics);
-        if (!network.airportExists(destination)) return failure("Destination airport " + destination + " does not exist.", empty, metrics);
+
+        if (adjList == null || adjList.isEmpty()) return failure("The flight network is empty.", empty, metrics);
+        fromAirport = adjList.normaliseCode(fromAirport);
+        toAirport = adjList.normaliseCode(toAirport);
+        if (fromAirport.isEmpty() || toAirport.isEmpty()) return failure("Source and destination codes cannot be empty.", empty, metrics);
+        if (!adjList.airportExists(fromAirport)) return failure("Airport not found: " + fromAirport, empty, metrics);
+        if (!adjList.airportExists(toAirport)) return failure("Airport not found: " + toAirport, empty, metrics);
         if (preference == null) return failure("A route preference must be selected.", empty, metrics);
 
         ArrayList<String> searchOrder = new ArrayList<>();
-        if (source.equals(destination)) {
-            ArrayList<String> path = new ArrayList<>(); path.add(source); searchOrder.add(source);
+        if (fromAirport.equals(toAirport)) {
+            ArrayList<String> path = new ArrayList<>(); path.add(fromAirport); searchOrder.add(fromAirport);
             return new RouteResult(true, path, "Source and destination are the same.",
                     searchOrder, 0, 0, 0, metrics);
         }
 
-        HashMap<String, Double> cost = new HashMap<>();
+        HashMap<String, Double> distance = new HashMap<>();
         HashMap<String, String> parent = new HashMap<>();
-        HashSet<String> processed = new HashSet<>();
-        for (Airport airport : network.getAirports()) cost.put(airport.getCode(), Double.POSITIVE_INFINITY);
-        cost.put(source, 0.0); parent.put(source, null);
+        HashSet<String> visited = new HashSet<>();
+        for (Airport airport : adjList.getAirports()) distance.put(airport.getCode(), Double.POSITIVE_INFINITY);
+        distance.put(fromAirport, 0.0);
+        parent.put(fromAirport, null);
 
-        PriorityQueue<Node> queue = new PriorityQueue<>();
-        queue.offer(new Node(source, 0));
+        PriorityQueue<Node> priorityQueue = new PriorityQueue<>();
+        priorityQueue.offer(new Node(fromAirport, 0));
         metrics.queueInserted();
-        metrics.observeQueueSize(queue.size());
-        while (!queue.isEmpty()) {
-            Node node = queue.poll();
+        metrics.observeQueueSize(priorityQueue.size());
+
+        while (!priorityQueue.isEmpty()) {
+            Node current = priorityQueue.poll();
             metrics.queueRemoved();
-            if (!processed.add(node.airportCode)) continue;
+            String currentAirport = current.airportCode;
+
+            if (visited.contains(currentAirport)) continue;
+            visited.add(currentAirport);
             metrics.vertexProcessed();
-            searchOrder.add(node.airportCode);
-            if (node.airportCode.equals(destination)) break;
-            for (FlightEdge edge : network.getOutgoingFlights(node.airportCode)) {
+            searchOrder.add(currentAirport);
+
+            if (currentAirport.equals(toAirport)) break;
+
+            for (Edge edge : adjList.getOutgoingFlights(currentAirport)) {
                 metrics.edgeExamined();
                 String neighbour = edge.getDestinationCode();
-                if (processed.contains(neighbour)) continue;
-                double newCost = cost.get(node.airportCode) + weight(edge, preference);
-                if (newCost < cost.get(neighbour)) {
-                    cost.put(neighbour, newCost);
-                    parent.put(neighbour, node.airportCode);
-                    queue.offer(new Node(neighbour, newCost));
+                if (visited.contains(neighbour)) continue;
+
+                double weight = weight(edge, preference);
+                double newDist = distance.get(currentAirport) + weight;
+
+                if (newDist < distance.get(neighbour)) {
+                    distance.put(neighbour, newDist);
+                    parent.put(neighbour, currentAirport);
+                    priorityQueue.offer(new Node(neighbour, newDist));
                     metrics.relaxationSucceeded();
                     metrics.queueInserted();
-                    metrics.observeQueueSize(queue.size());
+                    metrics.observeQueueSize(priorityQueue.size());
                 }
             }
         }
-        if (!processed.contains(destination)) return failure("No route is available from " + source + " to " + destination + ".", searchOrder, metrics);
-        ArrayList<String> path = reconstruct(parent, destination);
-        return BFSRouteFinder.success(network, path, searchOrder,
+
+        if (distance.get(toAirport) == Double.POSITIVE_INFINITY) {
+            return failure("No route found from " + fromAirport + " to " + toAirport + ".", searchOrder, metrics);
+        }
+
+        ArrayList<String> path = reconstructPath(parent, fromAirport, toAirport);
+        return BFSRouteFinder.success(adjList, path, searchOrder,
                 preference.getLabel() + " route found using Dijkstra's algorithm.", metrics);
     }
 
-    private double weight(FlightEdge edge, RoutePreference preference) {
+    // Backward-compatibility wrapper — keeps existing callers (GUI, tests) working unchanged
+    public RouteResult findRoute(AirlineNetwork network, String source, String destination, RoutePreference preference) {
+        return dijkstra(source, destination, preference, network);
+    }
+
+    private double weight(Edge edge, RoutePreference preference) {
         switch (preference) {
             case DISTANCE: return edge.getDistanceKm();
             case FARE: return edge.getFare();
@@ -84,9 +105,14 @@ public class DijkstraRouteFinder {
         return new RouteResult(false, new ArrayList<>(), message, order, 0, 0, 0, metrics);
     }
 
-    private ArrayList<String> reconstruct(HashMap<String, String> parent, String destination) {
+    // ========== 4.6 Helper Function: Reconstruct Path (matches proposal naming) ==========
+    private ArrayList<String> reconstructPath(HashMap<String, String> parent, String fromAirport, String toAirport) {
         ArrayList<String> path = new ArrayList<>();
-        for (String current = destination; current != null; current = parent.get(current)) path.add(current);
+        String current = toAirport;
+        while (current != null) {
+            path.add(current);
+            current = parent.get(current);
+        }
         Collections.reverse(path);
         return path;
     }

@@ -237,7 +237,7 @@ public final class GraphWindow {
                     continue;
                 }
 
-                for (FlightEdge edge : network.getOutgoingFlights(airport.getCode())) {
+                for (Edge edge : network.getOutgoingFlights(airport.getCode())) {
                     Point2D to = points.get(edge.getDestinationCode());
                     if (to == null) {
                         continue;
@@ -266,7 +266,7 @@ public final class GraphWindow {
             return primary != null || secondary != null;
         }
 
-        private boolean containsEdge(RouteResult result, FlightEdge edge) {
+        private boolean containsEdge(RouteResult result, Edge edge) {
             if (result == null || !result.isRouteFound()) {
                 return false;
             }
@@ -325,7 +325,7 @@ public final class GraphWindow {
             getChildren().add(node);
         }
 
-        private void drawArrow(Point2D from, Point2D to, FlightEdge edge,
+        private void drawArrow(Point2D from, Point2D to, Edge edge,
                 Color color, double width, double opacity, boolean highlighted) {
             double dx = to.getX() - from.getX();
             double dy = to.getY() - from.getY();
@@ -400,7 +400,7 @@ public final class GraphWindow {
             }
         }
 
-        private void drawWeightLabel(FlightEdge edge, Color color,
+        private void drawWeightLabel(Edge edge, Color color,
                 double x1, double y1, double controlX, double controlY,
                 double x2, double y2, double px, double py, double bend) {
 

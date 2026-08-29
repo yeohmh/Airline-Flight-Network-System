@@ -7,8 +7,10 @@ import java.util.Map;
 
 public class AirlineNetwork {
     private final LinkedHashMap<String, Airport> airports = new LinkedHashMap<>();
-    private final LinkedHashMap<String, ArrayList<FlightEdge>> adjacencyList = new LinkedHashMap<>();
+    private final LinkedHashMap<String, ArrayList<Edge>> adjList = new LinkedHashMap<>();
     private boolean operationMessagesEnabled = true;
+    private int numOfVertices = 0;
+    private int numOfEdges = 0;
 
     public void setOperationMessagesEnabled(boolean enabled) {
         operationMessagesEnabled = enabled;
@@ -22,71 +24,130 @@ public class AirlineNetwork {
         return code == null ? "" : code.trim().toUpperCase(Locale.ROOT);
     }
 
+    // ========== 4.1 Add Vertex ==========
     public boolean addAirport(Airport airport) {
         if (airport == null) { message("Unable to add airport: invalid data."); return false; }
-        String code = airport.getCode();
+        String airportCode = airport.getCode();
 
-        if (!code.matches("[A-Z]{3}")) {
+        if (!airportCode.matches("[A-Z]{3}")) {
             message("Unable to add airport: airport code must contain exactly 3 letters.");
             return false;
         }
 
-        if (airports.containsKey(code)) { message("Unable to add airport: " + code + " already exists."); return false; }
-        airports.put(code, airport);
-        adjacencyList.put(code, new ArrayList<>());
-        message("Airport " + code + " added successfully.");
-        return true;
-    }
-
-    public boolean removeAirport(String airportCode) {
-        String code = normaliseCode(airportCode);
-        if (!airports.containsKey(code)) { message("Unable to remove airport: " + code + " does not exist."); return false; }
-        int outgoing = adjacencyList.get(code).size();
-        int incoming = 0;
-        for (ArrayList<FlightEdge> flights : adjacencyList.values()) {
-            int before = flights.size();
-            flights.removeIf(edge -> edge.getDestinationCode().equals(code));
-            incoming += before - flights.size();
+        if (adjList.containsKey(airportCode)) {
+            message(airportCode + " already exists");
+            return false;
+        } else {
+            adjList.put(airportCode, new ArrayList<Edge>());
+            airports.put(airportCode, airport);
+            numOfVertices++;
+            message("Airport " + airportCode + " added successfully.");
+            return true;
         }
-        adjacencyList.remove(code);
-        airports.remove(code);
-        message("Airport " + code + " removed successfully.");
-        message("Removed " + outgoing + " outgoing and " + incoming + " incoming flight(s).");
+    }
+
+    // ========== 4.2 Remove Vertex ==========
+    public boolean removeAirport(String airport) {
+        String airportCode = normaliseCode(airport);
+
+        if (!adjList.containsKey(airportCode)) {
+            message(airportCode + " does not exist");
+            return false;
+        } else {
+            int outgoing = adjList.get(airportCode).size();
+            int incoming = 0;
+            for (String otherAirport : adjList.keySet()) {
+                if (!otherAirport.equals(airportCode)) {
+                    ArrayList<Edge> flights = adjList.get(otherAirport);
+                    int before = flights.size();
+                    flights.removeIf(edge -> edge.getDestinationCode().equals(airportCode));
+                    incoming += before - flights.size();
+                }
+            }
+            adjList.remove(airportCode);
+            airports.remove(airportCode);
+            numOfVertices--;
+            numOfEdges -= (outgoing + incoming);
+            message("Airport " + airportCode + " removed successfully.");
+            message("Removed " + outgoing + " outgoing and " + incoming + " incoming flight(s).");
+            return true;
+        }
+    }
+
+    // ========== 4.3 Add Edge ==========
+    public boolean addEdge(String fromAirport, String toAirport, int distance, double price, int time) {
+        String from = normaliseCode(fromAirport);
+        String to = normaliseCode(toAirport);
+
+        if (!adjList.containsKey(from) || !adjList.containsKey(to)) {
+            message("Airport does not exist");
+            return false;
+        }
+
+        if (from.equals(to)) {
+            message("Unable to add flight: source and destination cannot be the same.");
+            return false;
+        }
+
+        if (distance <= 0 || price <= 0 || time <= 0) {
+            message("Unable to add flight: distance, fare and duration must be positive.");
+            return false;
+        }
+
+        for (Edge edge : adjList.get(from)) {
+            if (edge.getDestinationCode().equals(to)) {
+                message("Edge already exists");
+                return false;
+            }
+        }
+
+        Edge newEdge = new Edge(from, to, distance, price, time);
+        adjList.get(from).add(newEdge);
+        numOfEdges++;
+        message("Flight " + from + " -> " + to + " added successfully.");
         return true;
     }
 
+    // ========== 4.4 Remove Edge ==========
+    public boolean removeEdge(String fromAirport, String toAirport) {
+        String from = normaliseCode(fromAirport);
+        String to = normaliseCode(toAirport);
+
+        if (!adjList.containsKey(from) || !adjList.containsKey(to)) {
+            message("Airport does not exist");
+            return false;
+        }
+
+        boolean removed = false;
+        for (Edge edge : adjList.get(from)) {
+            if (edge.getDestinationCode().equals(to)) {
+                adjList.get(from).remove(edge);
+                removed = true;
+                break;
+            }
+        }
+
+        if (!removed) {
+            message("Edge does not exist");
+            return false;
+        }
+
+        numOfEdges--;
+        message("Flight " + from + " -> " + to + " removed successfully.");
+        return true;
+    }
+
+    // ========== Backward-compatibility wrappers ==========
     public boolean addFlight(String sourceCode, String destinationCode,
             int distanceKm, double fare, int durationMinutes) {
-        String source = normaliseCode(sourceCode);
-        String destination = normaliseCode(destinationCode);
-        if (!airports.containsKey(source) || !airports.containsKey(destination)) {
-            message("Unable to add flight: source or destination airport does not exist."); return false;
-        }
-        if (source.equals(destination)) { message("Unable to add flight: source and destination cannot be the same."); return false; }
-        if (distanceKm <= 0 || fare <= 0 || durationMinutes <= 0) {
-            message("Unable to add flight: distance, fare and duration must be positive."); return false;
-        }
-        if (flightExists(source, destination)) {
-            message("Unable to add flight: " + source + " -> " + destination + " already exists."); return false;
-        }
-        adjacencyList.get(source).add(new FlightEdge(source, destination, distanceKm, fare, durationMinutes));
-        message("Flight " + source + " -> " + destination + " added successfully.");
-        return true;
+        return addEdge(sourceCode, destinationCode, distanceKm, fare, durationMinutes);
     }
 
     public boolean removeFlight(String sourceCode, String destinationCode) {
-        String source = normaliseCode(sourceCode);
-        String destination = normaliseCode(destinationCode);
-        if (!airports.containsKey(source) || !airports.containsKey(destination)) {
-            message("Unable to remove flight: source or destination airport does not exist."); return false;
-        }
-        boolean removed = adjacencyList.get(source)
-                .removeIf(edge -> edge.getDestinationCode().equals(destination));
-        if (!removed) { message("Unable to remove flight: " + source + " -> " + destination + " does not exist."); return false; }
-        message("Flight " + source + " -> " + destination + " removed successfully.");
-        return true;
+        return removeEdge(sourceCode, destinationCode);
     }
 
+    // ========== Unchanged helper/query methods ==========
     public boolean airportExists(String code) { return airports.containsKey(normaliseCode(code)); }
 
     public boolean flightExists(String sourceCode, String destinationCode) {
@@ -97,28 +158,23 @@ public class AirlineNetwork {
 
     public ArrayList<Airport> getAirports() { return new ArrayList<>(airports.values()); }
 
-    public ArrayList<FlightEdge> getOutgoingFlights(String code) {
-        ArrayList<FlightEdge> flights = adjacencyList.get(normaliseCode(code));
+    public ArrayList<Edge> getOutgoingFlights(String code) {
+        ArrayList<Edge> flights = adjList.get(normaliseCode(code));
         return flights == null ? new ArrayList<>() : new ArrayList<>(flights);
     }
 
-    public FlightEdge getFlight(String sourceCode, String destinationCode) {
+    public Edge getFlight(String sourceCode, String destinationCode) {
         String source = normaliseCode(sourceCode);
         String destination = normaliseCode(destinationCode);
-        if (!adjacencyList.containsKey(source)) return null;
-        for (FlightEdge edge : adjacencyList.get(source)) {
+        if (!adjList.containsKey(source)) return null;
+        for (Edge edge : adjList.get(source)) {
             if (edge.getDestinationCode().equals(destination)) return edge;
         }
         return null;
     }
 
-    public int getAirportCount() { return airports.size(); }
-
-    public int getFlightCount() {
-        int total = 0;
-        for (ArrayList<FlightEdge> flights : adjacencyList.values()) total += flights.size();
-        return total;
-    }
+    public int getAirportCount() { return numOfVertices; }
+    public int getFlightCount() { return numOfEdges; }
 
     public boolean isEmpty() { return airports.isEmpty(); }
 
@@ -135,9 +191,9 @@ public class AirlineNetwork {
         for (Map.Entry<String, Airport> entry : airports.entrySet()) {
             String source = entry.getKey();
             System.out.println("\n" + source + " - " + entry.getValue().getCity());
-            ArrayList<FlightEdge> flights = adjacencyList.get(source);
+            ArrayList<Edge> flights = adjList.get(source);
             if (flights.isEmpty()) System.out.println("  No outgoing flights.");
-            else for (FlightEdge flight : flights) System.out.println("  " + flight);
+            else for (Edge flight : flights) System.out.println("  " + flight);
         }
         System.out.println("\nTotal directed flights: " + getFlightCount());
     }
