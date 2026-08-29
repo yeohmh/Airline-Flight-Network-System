@@ -76,9 +76,9 @@ public class BFSRouteFinder {
         return new RouteResult(true, path, message, order, distance, fare, duration, metrics);
     }
 
-    private ArrayList<String> reconstruct(HashMap<String, String> parent, String destination) {
+    private ArrayList<String> reconstruct(HashMap<String, String> parent, String toAirport) {
         ArrayList<String> path = new ArrayList<>();
-        for (String current = destination; current != null; current = parent.get(current)) path.add(current);
+        for (String current = toAirport;current != null; current = parent.get(current)) path.add(current);
         Collections.reverse(path);
         return path;
     }

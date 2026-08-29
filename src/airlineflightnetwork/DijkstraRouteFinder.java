@@ -82,7 +82,7 @@ public class DijkstraRouteFinder {
             return failure("No route found from " + fromAirport + " to " + toAirport + ".", searchOrder, metrics);
         }
 
-        ArrayList<String> path = reconstructPath(parent, fromAirport, toAirport);
+        ArrayList<String> path = reconstructPath(parent, toAirport);
         return BFSRouteFinder.success(adjList, path, searchOrder,
                 preference.getLabel() + " route found using Dijkstra's algorithm.", metrics);
     }
@@ -106,7 +106,7 @@ public class DijkstraRouteFinder {
     }
 
     // ========== 4.6 Helper Function: Reconstruct Path (matches proposal naming) ==========
-    private ArrayList<String> reconstructPath(HashMap<String, String> parent, String fromAirport, String toAirport) {
+    private ArrayList<String> reconstructPath(HashMap<String, String> parent, String toAirport) {
         ArrayList<String> path = new ArrayList<>();
         String current = toAirport;
         while (current != null) {
